@@ -9,12 +9,6 @@ terraform {
   required_version = ">= 1.2.0"
 }
 
-provider "aws" {
-  region  = "ap-southeast-1"
-  access_key = "xxxx"
-  secret_key = "xxxx"
-}
-
 resource "aws_instance" "app_server" {
   ami           = "ami-0fa377108253bf620"
   instance_type = "t2.micro"
