@@ -28,7 +28,9 @@ sudo tee /etc/apt/sources.list.d/hashicorp.list'
         }
     stage('Terraform Plan') {
             steps {
+                withCredentials([aws(accessKeyVariable:'AWS_ACCESS_KEY_ID',credentialsId:'terraformaws',secretKeyVariable:'AWS_SECRET_ACCESS_KEY')]){
                 sh 'terraform plan'
+            }
             }
         }
     stage('Terraform Apply') {
