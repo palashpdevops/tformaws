@@ -1,0 +1,45 @@
+Description: Linux EC2 Deployment
+Parameters: 
+  AMIId:
+     Type: String
+  EC2Role:
+     Type: String
+  Subnets:
+     Type: CommaDelimitedList
+  InstanceType:
+     Type: String
+  TagName:
+     Type: String
+  TagComponent:
+     Type: String      
+  SecurityGroups:
+     Type: String
+Resources:
+
+  EC2InstanceLC:
+     Type:
+     Properties:
+     InstanceType: !sub "${InstanceType}"
+     KeyName: !sub "${SSHKeyName}"
+     AssociatePublibIpAddress: false
+     ImageID: !sub "${AMIId}"
+     IamInstanceProfile: !Ref EC2Role
+     SecurityGroups: !Ref SecurityGroups
+
+UserData: !Base64
+    Fn::Join:
+       - ''
+       - ["!/bib/bash -xe",
+       " \n cd /home/ububtu",
+       " \n mkdir /home/ububtu/tomcat",
+       " \n cd home/ububtu/tomcat",
+       " \n wget https://apache.org/tomcat/tomcat9/apache-tomcat-9.1.0.tar.gz",
+       " \n tar -xvf apache-tomcat-9.1.0.tar.gz",
+       " \n cd apache-tomcat-9.1.0",
+       " \n chmod -R 777 *",
+       ]
+       
+
+
+     
+        
