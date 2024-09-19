@@ -1,0 +1,63 @@
+#!groovy
+node('master') {
+  DeleteDir()
+  CurrentBuild.displayName = "cloudopstci-${param.ENV}-${Build.number}"
+  checkout scm
+  properties([
+    parameters([
+      choice(name: 'ENV',description: 'Environment',choices: ['devl,'qual',cert,'prod'])
+    ])
+  ])
+  env.REGION="ap-southeast-1"
+  env.ROLE_NAME="jenkins/app-cloudopstci"
+  env.LOG_LEVEL="ERROR"
+
+  if ("${params.ENV}" == "devl"){
+    env.VPC_NAME = "aws-MYVPC-India-devl"
+    env.REGION = "ap-southeast-1"
+    env.ACCOUNT.NUMBER = "10056428109"
+
+  } else if ("${params.ENV}" == "test"){
+    env.VPC_NAME = "aws-MYVPC-India-test"
+    env.REGION = "ap-southeast-1"
+    env.ACCOUNT.NUMBER = "10056428109"
+
+  } else if ("${params.ENV}" == "pprod"){
+    env.VPC_NAME = "aws-MYVPC-India-pprod"
+    env.REGION = "ap-southeast-1"
+    env.ACCOUNT.NUMBER = "10056428109"
+
+ } else if ("${params.ENV}" == "prod"){
+    env.VPC_NAME = "aws-MYVPC-India-prod"
+    env.REGION = "ap-southeast-1"
+    env.ACCOUNT.NUMBER = "10056428109"   
+
+  } else {
+    echo "${JOB_NAME} branch does not have any deployment instruction"
+    sh 'exit 1'
+  }
+
+ stage("parameterizing")   {
+    if ("${params.Invoke_Parameters}" == "Yes") {
+      currentBuild.result = 'Aborted'
+      error('Dry run completed. Job Parameterized.')
+    }
+ }
+
+ def DeployEC2Stack = load "ci/ec2_infra_deploy.groovy"
+    stage("Deploy EC2 Stack") {
+      env.STACK_NAME = "cloudopstci"
+      env.ACCOUNT_NUMBER = "{ACCOUNT_NUMBER}"
+      env.PATH = ".:$PATH"
+      env.REGION = "${REGION}"
+      env.ARCH_PATH = "tform/tomcat-ce2.yaml"
+      env.S3_BUCKET = "${VPC_NAME}-system"
+      env.S3_PATH = "tform/ec2-instance.yaml"
+      env.VAR_PATH = "tform/${param.ENV}-EC2-Instance.json"
+      DeployEC2Stack.Deploy()
+    }
+ step([$class: 'WsCleanup'])
+}    
+      
+      
+    
