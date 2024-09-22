@@ -9,3 +9,135 @@ assume_role {
 role_arn =var.role_arn
 }
 
+terraform {
+  backend "s3" {
+   bucket = "MyS3Bucket-tstatedile"
+   key    = "tstate/ec2-stack.tfstate"
+   region = "ap-southeast-1"
+  }
+}
+
+resource "aws_security_group" "myWebappEC2-ELBSecurityGroup" {
+  description "This is ELB security group"
+
+  ingress {
+     cidr_blocks = ["0.0.0.0/0"]
+     from_port = 443
+     protocol = tct
+     to_port  = 443
+}
+
+  ingress {
+     cidr_blocks = ["0.0.0.0/0"]
+     from_port = 80
+     protocol = tct
+     to_port  = 80
+}
+
+tags = {
+   Name = var.name
+   component = var.component
+}
+  vpc_id = var.vpc_id
+}
+
+resource "aws_security_group" "WebappEC2-MyAppSecurityGroup" {
+  description "This is ELB security group"
+
+  ingress {
+     from_port = 8080
+     protocol = tcp
+     security_groups = ["${aws_security_group}.yWebappEC2-ELBSecurityGroup.id"]
+     to_port  = 8080
+}
+
+tags = {
+   Name = var.name
+   component = var.component
+}
+  vpc_id = var.vpc_id
+}
+
+
+resource "aws_lb" "WebappEC2-ApplicationLBCreate" {
+  name = var.lb_name
+  internal = true
+  security_groups = flattern([data.aws_security_groups.ec2_security_group.ids"])
+  subnets = flattern([var.private_subnets])
+
+tags = {
+   Name = var.name
+   component = var.component
+}
+}
+
+resource "aws_launch_configuration" "WebappEC2-AutoScalingConfigCreate" {
+  associate_public_ip_address = true
+  iam_instance_profile = var.iam_instance_profile
+  image_id = var.image_id
+  instance_type = var.instance_type
+  key_name = var.key_name
+  security_groups = flattern([data.aws_security_groups.ec2_security_group.ids"])
+  
+}
+
+resource "aws_lb_target_group" "WebappEC2-AppLBTargetGroupCreate" {
+  port = 8080
+  name = var.target_group_name
+  protocol = "HTTP"
+
+ health_check {
+   port = var.health_port
+   protocol = "HTTP"
+   interval = 60
+   path = var.health_path
+   timeout = 5
+   healthy_threashold = var.healthy_threashold
+   unhealthy_threashold = var.unhealthy_threashold
+  }
+  vpc_id = var.vpc_id
+}
+
+resource "aws_lb_listner" "WebappEC2-ApplicationLBListnerCreate" {
+  certificate_arn = var.certificate_arn
+  load_balancer_arn = "${aws_lb.ApplicationLBCreate.arn}"
+  port = 443
+  protocol = "HTTPS"
+  
+  default_action { 
+     type = "forward"
+     target_group_arn = "${aws_lb_target_group.AppLBTargetGroupCreate.arn}"
+     }
+}
+
+resource "aws_autoscaling_group" "WebappEC2-AutoScalingGroupCreate" {
+  desired_capacity = var.desired_capacity
+  health_check_grace_period = 600
+  health_check_type = "EC2"
+  launch_configuration = "${aws_launch_configuration.WebappEC2-AutoScalingConfigCreate.name}"
+  max_size = var.max_size
+  min_size = var.min_size
+  target_group_arn = "${aws_lb_target_group.AppLBTargetGroupCreate.arn}"
+  termination_policies = ["OldestFirst"]
+  vpc_zone_identifier = flattern([var.private_subnets])
+   
+  tags { 
+     key = "Name"
+     propogate_at_launch = true
+     value = var.name
+     }
+
+  tags { 
+     key = "Component"
+     propogate_at_launch = true
+     value = var.component
+     }
+  }
+
+resource "aws_autoscaling_policy" "WebappEC2-ScaleUpPolicy" {
+  adjusted_type = "ChangeInCapacity"
+  autoscaling_group_name ="${aws_autoscaling_group.WebappEC2-AutoScalingGroupCreate.name}"
+  cooldown = 600
+  name = "ScaleUpPolicy"
+  scaling_adjustment = 1
+}
