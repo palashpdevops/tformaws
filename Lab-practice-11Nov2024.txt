@@ -24,6 +24,14 @@ terraform {
     unlock_address = "http://localhost:5000/terraform_lock/4cdd0c76-d78b-11e9-9bea-db9cd8374f3a"
     unlock_method  = "DELETE"
   }
+# Remote backnd setup
+ backend "remote" {
+   name "app.terraform.io"
+   organization "palashpdevops"
+   workspaces {
+      name = "my-aws-lab"
+   }
+}
 
   required_version = "1.9.8"
   required_providers {
