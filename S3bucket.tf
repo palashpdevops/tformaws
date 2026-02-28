@@ -1,20 +1,29 @@
-resource "aws_s3_bucket" "moveit_bucket" {
-  bucket = "moveitbucketdev"
+# Fetch S3 Bucket and then create subfolder and resource policy
+
+resource "aws_s3_bucket" "apidata_bucket" {
+  bucket = "apidatabucketdev"
 }
 
-resource "aws_s3_object" "moveit_folder" {
+resource "aws_s3_object" "apidata_folder" {
   for_each = toset([
-    "CCDirectBillData/In",
-    "CCDirectBillData/In"
+    "PayBillData/In",
+    "PayBillData/In"
   ])
 
-  bucket  = aws_s3_bucket.moveit_bucket.id
+  bucket  = aws_s3_bucket.apidata_bucket.id
   key     = each.value
   content = ""
+# Tag is required if Sentinel is enabled and existing AWS resource is Tagged, If tag data is mismatched policy check will fail"
+    tags = {
+      "Unitcode"  = "90"
+      "STACK"     = "BILLData"
+      "ManagedBy" = "Terraform"
+      "WORKSPACE" = "Terraform_Payu"
+    }
 }
 
-resource "aws_s3_bucket_policy" "moveit_policy" {
-  bucket = aws_s3_bucket.moveit_bucket.id
+resource "aws_s3_bucket_policy" "apidata_policy" {
+  bucket = aws_s3_bucket.apidata_bucket.id
 
   policy = jsonencode({
     Statement = [
@@ -23,12 +32,16 @@ resource "aws_s3_bucket_policy" "moveit_policy" {
         Effect = "Allow"
         Principal = {
           AWS = [
-            "*"
+            "arn::aws:iam::$AWS_ACCT::role/DEVOPS_PLAYDATA",
+            "arn::aws:iam::$AWS_ACCT::user/PAYU"
           ]
         }
         Action = "s3:*"
         Resource = [
-          "arn:aws:s3::moveitbucketdev*"
+          "arn:aws:s3::apidatabucketdev",
+          "arn:aws:s3::apidatabucketdev/*",
+          "arn:aws:s3::apidatabucketdev/BillData*",
+          "arn:aws:s3::apidatabucketdev/BillData/*"
         ]
       }
     ]
