@@ -47,3 +47,29 @@ resource "aws_s3_bucket_policy" "apidata_policy" {
     ]
   })
 }
+
+# S3 Bucket lifecycle configuration
+resource "aws_s3_bucket_lifecycle_configuration" "objects_retention" {
+  bucket = aws_s3_bucket.apidatabucketdev.id
+
+  rule {
+    id     = "ExpireObjectsAfter14Days"
+    status = "Enabled"
+
+    expiration {
+      days = 14
+    }
+
+    filter {
+      prefix = "" # applies to all objects
+    }
+# Expire noncurrent versions after 14 days    
+    noncurrent_version_expiration {
+      noncurrent_days = 14
+    }
+# Cleanup uncomplete uploads
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
